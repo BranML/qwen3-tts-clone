@@ -1,0 +1,49 @@
+# ============================================================
+# Qwen3-TTS 本地克隆服务 - 依赖清单 (精确版本锁定)
+# 安装方式: 见 README.md
+# ============================================================
+
+# --- Web 框架 ---
+fastapi==0.135.3
+uvicorn==0.43.0
+python-multipart==0.0.22
+pydantic==2.12.5
+starlette==1.0.0
+
+# --- 音频处理 ---
+soundfile==0.13.1
+pydub==0.25.1
+librosa==0.11.0
+soxr==0.1.0
+audioread==3.1.0
+
+# --- 机器学习核心 ---
+# ⚠️  torch / torchaudio 需单独安装 CUDA 版本，见 README
+# torch==2.11.0+cu128
+# torchaudio==2.11.0+cu128
+numpy==2.4.4
+scipy==1.17.1
+scikit-learn==1.8.0
+accelerate==1.12.0
+einops==0.8.2
+numba==0.65.0
+
+# --- Qwen-TTS 推理 ---
+qwen-tts==0.1.1
+transformers==4.57.3
+tokenizers==0.22.2
+safetensors==0.7.0
+huggingface-hub==0.36.2
+
+# --- 工具库 ---
+requests==2.33.1
+aiofiles==24.1.0
+python-dotenv==1.0.0
+tqdm==4.67.3
+pyyaml==6.0.3
+packaging==26.0
+filelock==3.25.2
+sympy==1.14.0
+networkx==3.6.1
+regex==2026.4.4
+joblib==1.5.3

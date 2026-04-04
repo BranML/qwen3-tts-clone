@@ -1,0 +1,40 @@
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.egg-info/
+dist/
+build/
+
+# 虚拟环境
+.venv/
+venv/
+
+# 环境变量
+.env
+
+# 上传/生成文件
+uploads/
+outputs/
+
+# 缓存
+voice_cache.json
+*.pt
+*.bin
+
+# IDE
+.vscode/
+.idea/
+.agent/
+
+# 模型权重 (太大不要提交)
+Qwen3-TTS-*/
+models/
+
+# HuggingFace 本地缓存
+.cache/
+hub/
+
+# 日志
+*.log
+logs/

@@ -1,0 +1,30 @@
+[project]
+name = "qwen3-tts-clone"
+version = "1.0.0"
+description = "Qwen3-TTS 本地声音克隆服务 - 兼容 OpenAI TTS API 格式"
+requires-python = ">=3.10"
+dependencies = [
+    "fastapi>=0.135.3",
+    "uvicorn>=0.43.0",
+    "python-multipart>=0.0.22",
+    "pydantic>=2.12.5",
+    "soundfile>=0.13.1",
+    "pydub>=0.25.1",
+    "librosa>=0.11.0",
+    "numpy>=2.0.0",
+    "torch>=2.1.0",
+    "torchaudio>=2.1.0",
+    "transformers>=4.57.3",
+    "accelerate>=1.12.0",
+    "huggingface-hub>=0.36.2",
+    "safetensors>=0.7.0",
+    "qwen-tts>=0.1.1",
+    "requests>=2.33.1",
+    "aiofiles>=24.1.0",
+    "python-dotenv>=1.0.0",
+]
+
+[tool.uv]
+# PyTorch CUDA 版本需要从官方源单独安装，见 README 安装步骤
+# 如果使用 CPU，移除下方 extra-index-url 并将 torch 改为非 cu 版本
+extra-index-url = ["https://download.pytorch.org/whl/cu128"]
