@@ -6,7 +6,6 @@ import os
 import sys
 import json
 import time
-import uuid
 import hashlib
 import threading
 from typing import Optional
@@ -55,6 +54,55 @@ class TTSEngine:
 
         print(f"[OK] 模型加载完成, 耗时 {time.time() - t0:.1f}s")
 
+        # -------------------------------------------------------
+        # torch.compile() 加速: 使用 CUDA Graph + 算子融合
+        # mode="reduce-overhead" 在 Windows 上无需 Triton 即可生效
+        # -------------------------------------------------------
+        if cfg.TORCH_COMPILE and torch.cuda.is_available():
+            print("[OPT] 正在编译模型 (torch.compile)，首次推理会额外花 30-60s...")
+            try:
+                # 只编译 LM 部分（生成 token 的核心），避免编译整个模型失败
+                if hasattr(self.base_model, "model") and hasattr(self.base_model.model, "forward"):
+                    self.base_model.model = torch.compile(
+                        self.base_model.model,
+                        mode="reduce-overhead",
+                        fullgraph=False,
+                    )
+                    print("[OK] torch.compile 完成")
+                else:
+                    print("[SKIP] 模型结构不支持 torch.compile，跳过")
+            except Exception as e:
+                print(f"[WARN] torch.compile 失败，跳过: {e}")
+
+        # -------------------------------------------------------
+        # Warmup: 预热 CUDA 算子，消除首次推理的冷启动延迟
+        # -------------------------------------------------------
+        if cfg.WARMUP_ON_START:
+            self._warmup()
+
+    def _warmup(self):
+        """推理预热 - 让 CUDA 提前编译 kernel，首次真实请求不再卡顿"""
+        print("[WARM] 正在预热模型...")
+        t0 = time.time()
+        try:
+            # 用一个短文本做一次完整推理，但不保存结果
+            dummy_meta = list(self.voice_meta.values())
+            if dummy_meta:
+                # 用已有的第一个音色做预热
+                first_uri = list(self.voice_meta.keys())[0]
+                with torch.inference_mode():
+                    prompt_items = self._get_or_build_prompt(first_uri)
+                    self.base_model.generate_voice_clone(
+                        text="你好",
+                        language="Auto",
+                        voice_clone_prompt=prompt_items,
+                    )
+                print(f"[OK] 预热完成, 耗时 {time.time() - t0:.1f}s")
+            else:
+                print("[WARM] 无已注册音色，跳过预热（首次请求时会稍慢）")
+        except Exception as e:
+            print(f"[WARN] 预热失败，不影响正常使用: {e}")
+
     # ----------------------------------------------------------
     # 音色管理
     # ----------------------------------------------------------
@@ -100,8 +148,6 @@ class TTSEngine:
             }
             self._save_voice_cache()
 
-        # 预构建 clone prompt (lazy, 在首次使用时构建)
-        # 不在此处构建是因为注册可能在模型加载前调用
         print(f"[OK] 音色已注册: {custom_name} -> {voice_uri}")
         return voice_uri
 
@@ -157,12 +203,20 @@ class TTSEngine:
         # 获取克隆 prompt
         prompt_items = self._get_or_build_prompt(voice_uri)
 
-        # 生成语音
-        wavs, sr = self.base_model.generate_voice_clone(
-            text=text,
-            language=language,
-            voice_clone_prompt=prompt_items,
-        )
+        t0 = time.time()
+
+        # torch.inference_mode: 禁用梯度计算，节省显存 & 提速
+        with torch.inference_mode():
+            wavs, sr = self.base_model.generate_voice_clone(
+                text=text,
+                language=language,
+                voice_clone_prompt=prompt_items,
+            )
+
+        infer_ms = (time.time() - t0) * 1000
+        audio_len_s = len(wavs[0]) / sr if sr > 0 else 0
+        rtf = (infer_ms / 1000) / audio_len_s if audio_len_s > 0 else 0
+        print(f"[PERF] 推理耗时 {infer_ms:.0f}ms | 音频时长 {audio_len_s:.1f}s | RTF {rtf:.2f}")
 
         wav_data = wavs[0]
 

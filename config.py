@@ -28,15 +28,29 @@ TTS_CUSTOM_VOICE_MODEL = os.getenv(
 
 # 设备 & 精度
 DEVICE = os.getenv("TTS_DEVICE", "cuda:0")
-DTYPE = "bfloat16"  # bfloat16 适合 Ampere+ 架构
+DTYPE = "bfloat16"  # bfloat16 适合 Ampere+ 架构（RTX 30/40 系列）
 
-# FlashAttention 2: RTX 3060 可用, 但 Windows 上安装困难
-# 如果安装了 flash-attn 则自动启用, 否则使用 sdpa
+# FlashAttention 2: RTX 3060 可用, 但 Windows 上需安装预编译 wheel
+# 如果安装了 flash-attn 则自动启用, 否则使用 sdpa (PyTorch 内置，免安装)
 try:
     import flash_attn  # noqa: F401
     ATTN_IMPL = "flash_attention_2"
 except ImportError:
     ATTN_IMPL = "sdpa"
+
+# ============================================================
+# 推理加速配置
+# ============================================================
+
+# torch.compile(): 使用 CUDA Graph + 算子融合加速推理
+# - 首次启动会多花 30-60s 编译
+# - 后续每次推理可加速 20-40%
+# - 在 Windows 上设置为 False 如遇到问题
+TORCH_COMPILE = os.getenv("TTS_TORCH_COMPILE", "false").lower() == "true"
+
+# 启动时预热: 服务启动后立即做一次推理，消除首次请求的冷启动延迟
+# 需要已有注册的音色才会生效
+WARMUP_ON_START = os.getenv("TTS_WARMUP", "true").lower() == "true"
 
 # ============================================================
 # 存储配置
